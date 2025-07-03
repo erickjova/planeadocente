@@ -1,4 +1,4 @@
-# PlaneaDocente - Generador de planeaciones con ChatGPT y Word vía OpenRouter
+# PlaneaDocente - Generador de planeaciones con OpenRouter y Word
 
 import streamlit as st
 import requests
@@ -7,9 +7,9 @@ import tempfile
 import os
 
 st.set_page_config(page_title="PlaneaDocente", layout="centered")
-st.title("📘 PlaneaDocente con ChatGPT + Word")
+st.title("📘 PlaneaDocente con OpenRouter + Word")
 
-# Obtener la API Key desde secrets (configurado en Streamlit Cloud)
+# Obtener la API Key desde secrets.toml
 api_key = st.secrets["OPENROUTER_API_KEY"]
 
 # Entradas del usuario
@@ -22,29 +22,38 @@ topic = st.text_input("Tema específico")
 # Función para generar planeación con OpenRouter
 @st.cache_data(show_spinner=True)
 def generar_planeacion(subject, grade, competency, duration, topic):
-    prompt = f"""Genera una planeación didáctica para una clase de {subject} en {grade}. El tema específico es \"{topic}\" y debe enfocarse en el siguiente aprendizaje esperado: \"{competency}\". La clase dura {duration}. Incluye:
+    prompt = f"""
+    Genera una planeación didáctica para una clase de {subject} en {grade}. El tema específico es \"{topic}\" y debe enfocarse en el siguiente aprendizaje esperado: \"{competency}\". La clase dura {duration}. Incluye:
     - Propósito
     - Actividades de inicio, desarrollo y cierre
     - Recursos didácticos
     - Evaluación sugerida
-    Escribe en español en formato claro."""
-
-    headers = {
-        "Authorization": f"Bearer {api_key}",
-        "Content-Type": "application/json",
-        "X-Title": "PlaneaDocente"
-    }
-
-    data = {
-        "model": "openai/gpt-3.5-turbo",
-        "messages": [{"role": "user", "content": prompt}],
-        "max_tokens": 800
-    }
+    Escribe en español en formato claro.
+    """
 
     try:
-        response = requests.post("https://openrouter.ai/api/v1/chat/completions", headers=headers, json=data)
-        result = response.json()
-        return result["choices"][0]["message"]["content"]
+        headers = {
+            "Authorization": f"Bearer {api_key}",
+            "Content-Type": "application/json"
+        }
+
+        body = {
+            "model": "openai/gpt-3.5-turbo",
+            "messages": [{"role": "user", "content": prompt}]
+        }
+
+        response = requests.post("https://openrouter.ai/api/v1/chat/completions", headers=headers, json=body)
+
+        if response.status_code != 200:
+            return f"❌ Error {response.status_code}: {response.text}"
+
+        data = response.json()
+
+        if "choices" in data:
+            return data["choices"][0]["message"]["content"]
+        else:
+            return f"❌ Respuesta inesperada: {data}"
+
     except Exception as e:
         return f"❌ Error al generar la planeación: {str(e)}"
 
@@ -53,7 +62,8 @@ def crear_docx(contenido):
     doc = Document()
     doc.add_heading("Planeación Didáctica", 0)
     for linea in contenido.split("\n"):
-        doc.add_paragraph(linea.strip())
+        if linea.strip():
+            doc.add_paragraph(linea.strip())
     temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".docx")
     doc.save(temp_file.name)
     return temp_file.name
