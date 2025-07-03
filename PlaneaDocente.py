@@ -1,4 +1,4 @@
-# PlaneaDocente - Generador de planeaciones con ChatGPT y Word (vía OpenRouter)
+# PlaneaDocente - Generador de planeaciones con ChatGPT y Word vía OpenRouter
 
 import streamlit as st
 import requests
@@ -7,15 +7,10 @@ import tempfile
 import os
 
 st.set_page_config(page_title="PlaneaDocente", layout="centered")
-st.title("📘 PlaneaDocente con OpenRouter + Word")
+st.title("📘 PlaneaDocente con ChatGPT + Word")
 
 # Obtener la API Key desde secrets (configurado en Streamlit Cloud)
-API_KEY = st.secrets["OPENROUTER_API_KEY"]
-HEADERS = {
-    "Authorization": f"Bearer {API_KEY}",
-    "HTTP-Referer": "https://tusitio.streamlit.app",
-    "X-Title": "PlaneaDocente"
-}
+api_key = st.secrets["OPENROUTER_API_KEY"]
 
 # Entradas del usuario
 subject = st.text_input("Asignatura (ej. Matemáticas)")
@@ -27,28 +22,29 @@ topic = st.text_input("Tema específico")
 # Función para generar planeación con OpenRouter
 @st.cache_data(show_spinner=True)
 def generar_planeacion(subject, grade, competency, duration, topic):
-    prompt = f"""
-    Genera una planeación didáctica para una clase de {subject} en {grade}. El tema específico es \"{topic}\" y debe enfocarse en el siguiente aprendizaje esperado: \"{competency}\". La clase dura {duration}. Incluye:
+    prompt = f"""Genera una planeación didáctica para una clase de {subject} en {grade}. El tema específico es \"{topic}\" y debe enfocarse en el siguiente aprendizaje esperado: \"{competency}\". La clase dura {duration}. Incluye:
     - Propósito
     - Actividades de inicio, desarrollo y cierre
     - Recursos didácticos
     - Evaluación sugerida
-    Escribe en español en formato claro.
-    """
+    Escribe en español en formato claro."""
+
+    headers = {
+        "Authorization": f"Bearer {api_key}",
+        "Content-Type": "application/json",
+        "X-Title": "PlaneaDocente"
+    }
+
+    data = {
+        "model": "openai/gpt-3.5-turbo",
+        "messages": [{"role": "user", "content": prompt}],
+        "max_tokens": 800
+    }
+
     try:
-        response = requests.post(
-            "https://openrouter.ai/api/v1/chat/completions",
-            headers=HEADERS,
-            json={
-                "model": "openai/gpt-3.5-turbo",
-                "messages": [{"role": "user", "content": prompt}],
-                "max_tokens": 800
-            }
-        )
-        if response.status_code == 200:
-            return response.json()["choices"][0]["message"]["content"]
-        else:
-            return f"❌ Error {response.status_code}: {response.text}"
+        response = requests.post("https://openrouter.ai/api/v1/chat/completions", headers=headers, json=data)
+        result = response.json()
+        return result["choices"][0]["message"]["content"]
     except Exception as e:
         return f"❌ Error al generar la planeación: {str(e)}"
 
