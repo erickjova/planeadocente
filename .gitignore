@@ -1,28 +1,2 @@
-# 🛡️ Evita subir tu clave API
+# Evita subir tu clave API
 .streamlit/secrets.toml
-
-# 🐍 Archivos de Python innecesarios
-__pycache__/
-*.pyc
-*.pyo
-*.pyd
-
-# 🧪 Archivos temporales
-*.tmp
-*.log
-*.bak
-
-# 📦 Entornos virtuales
-.venv/
-env/
-venv/
-
-# ⚙️ Configuración de Streamlit
-.streamlit/config.toml
-
-# 📝 Archivos de salida (Word)
-*.docx
-
-# 🛑 Otros archivos personales o locales
-.DS_Store
-Thumbs.db
