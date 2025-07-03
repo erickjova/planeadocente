@@ -1,17 +1,16 @@
 # PlaneaDocente - Generador de planeaciones con ChatGPT y Word
 
 import streamlit as st
-import openai
+from openai import OpenAI
 from docx import Document
 import tempfile
-import os
 
 st.set_page_config(page_title="PlaneaDocente", layout="centered")
 st.title("📘 PlaneaDocente con ChatGPT + Word")
 
 # Obtener la API Key desde secrets (configurado en Streamlit Cloud)
 api_key = st.secrets["OPENAI_API_KEY"]
-openai.api_key = api_key
+client = OpenAI(api_key=api_key)
 
 # Entradas del usuario
 subject = st.text_input("Asignatura (ej. Matemáticas)")
@@ -32,14 +31,12 @@ def generar_planeacion(subject, grade, competency, duration, topic):
     Escribe en español en formato claro.
     """
     try:
-        respuesta = openai.ChatCompletion.create(
+        respuesta = client.chat.completions.create(
             model="gpt-3.5-turbo",
             messages=[{"role": "user", "content": prompt}],
             max_tokens=800
         )
         return respuesta.choices[0].message.content
-    except openai.RateLimitError:
-        return "❌ Se ha excedido el límite de uso de la API. Intenta nuevamente más tarde."
     except Exception as e:
         return f"❌ Error al generar la planeación: {str(e)}"
 
