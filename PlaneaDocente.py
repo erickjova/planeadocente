@@ -1,16 +1,21 @@
-# PlaneaDocente - Generador de planeaciones con ChatGPT y Word
+# PlaneaDocente - Generador de planeaciones con ChatGPT y Word (vía OpenRouter)
 
 import streamlit as st
-from openai import OpenAI
+import requests
 from docx import Document
 import tempfile
+import os
 
 st.set_page_config(page_title="PlaneaDocente", layout="centered")
-st.title("📘 PlaneaDocente con ChatGPT + Word")
+st.title("📘 PlaneaDocente con OpenRouter + Word")
 
 # Obtener la API Key desde secrets (configurado en Streamlit Cloud)
-api_key = st.secrets["OPENAI_API_KEY"]
-client = OpenAI(api_key=api_key)
+API_KEY = st.secrets["OPENROUTER_API_KEY"]
+HEADERS = {
+    "Authorization": f"Bearer {API_KEY}",
+    "HTTP-Referer": "https://tusitio.streamlit.app",
+    "X-Title": "PlaneaDocente"
+}
 
 # Entradas del usuario
 subject = st.text_input("Asignatura (ej. Matemáticas)")
@@ -19,7 +24,7 @@ competency = st.text_input("Competencia o aprendizaje esperado")
 duration = st.text_input("Duración de clase (ej. 50 minutos)")
 topic = st.text_input("Tema específico")
 
-# Función para generar planeación con GPT
+# Función para generar planeación con OpenRouter
 @st.cache_data(show_spinner=True)
 def generar_planeacion(subject, grade, competency, duration, topic):
     prompt = f"""
@@ -31,12 +36,19 @@ def generar_planeacion(subject, grade, competency, duration, topic):
     Escribe en español en formato claro.
     """
     try:
-        respuesta = client.chat.completions.create(
-            model="gpt-3.5-turbo",
-            messages=[{"role": "user", "content": prompt}],
-            max_tokens=800
+        response = requests.post(
+            "https://openrouter.ai/api/v1/chat/completions",
+            headers=HEADERS,
+            json={
+                "model": "openai/gpt-3.5-turbo",
+                "messages": [{"role": "user", "content": prompt}],
+                "max_tokens": 800
+            }
         )
-        return respuesta.choices[0].message.content
+        if response.status_code == 200:
+            return response.json()["choices"][0]["message"]["content"]
+        else:
+            return f"❌ Error {response.status_code}: {response.text}"
     except Exception as e:
         return f"❌ Error al generar la planeación: {str(e)}"
 
